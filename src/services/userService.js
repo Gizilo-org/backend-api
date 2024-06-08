@@ -10,7 +10,7 @@ exports.getUser = async (userId) => {
 exports.updateUser = async (userId, username, email, imageUrl) => {
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { username, email, avatar: imageUrl | undefined},
+    data: { username, email, avatar: imageUrl | null},
   });
   return user;
 };
