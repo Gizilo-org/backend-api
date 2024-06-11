@@ -33,12 +33,14 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --force-renewal --email syaifulanwar2228@gmail.com -d test.gizilo.com --agree-tos
+    command: certonly --webroot -w /var/www/certbot --force-renewal --email syaifulanwar2228@gmail.com -d api.gizilo.com --agree-tos
     
   postgres:
     image: postgres:15
     environment:
-      - .env
+      - POSTGRES_DB=DB
+      - POSTGRES_USER=USER
+      - POSTGRES_PASSWORD=PASS
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: always
