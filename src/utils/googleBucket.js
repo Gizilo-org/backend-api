@@ -1,4 +1,9 @@
 const { Storage } = require('@google-cloud/storage');
+const fs = require('fs');
+const util = require('util');
+const path = require('path');
+
+const stat = util.promisify(fs.stat);
 
 const storage = new Storage({
   credentials: {
@@ -10,29 +15,52 @@ const storage = new Storage({
 
 const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET);
 
-exports.uploadToGoogleBucket = async (file) => {
-  const fileName = `${Date.now()}-${file.originalname}`;
-  const blob = bucket.file(fileName);
-  const stream = blob.createWriteStream({
-    metadata: {
-      contentType: file.mimetype,
-    },
-  });
+exports.uploadToGoogleBucket = async (file, destination, filename) => {
+  try {
+    if (!file) {
+      throw new Error('No file provided');
+    }
 
-  return new Promise((resolve, reject) => {
-    stream.on('error', (err) => {
-      reject(err);
+    const fileName = `${Date.now()}-${filename}`;
+    const blob = bucket.file(fileName);
+    const blobStream = blob.createWriteStream({
+      metadata: {
+        contentType: file.mimetype,
+      },
+      resumable: false,
     });
 
-    stream.on('finish', () => {
-      resolve(`https://storage.googleapis.com/${process.env.GOOGLE_CLOUD_STORAGE_BUCKET}/${fileName}`);
-    });
+    const filePath = path.join(destination, file.filename);
 
-    stream.end(file.buffer);
-  });
+    // Wait for the file to be available
+    await stat(filePath);
+
+    return new Promise((resolve, reject) => {
+      blobStream.on('error', (err) => reject(err));
+      blobStream.on('finish', async () => {
+        const [metadata] = await blob.getMetadata();
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${metadata.name}`;
+        resolve(publicUrl);
+      });
+
+      fs.createReadStream(filePath).pipe(blobStream);
+    });
+  } catch (error) {
+    console.error('Error uploading file to Google Cloud Storage:', error);
+    throw error;
+  }
 };
 
 exports.deleteFromGoogleBucket = async (url) => {
-  const fileName = url.split('/').pop();
-  await bucket.file(fileName).delete();
+  try {
+    const fileName = url.split('/').pop();
+    const file = bucket.file(fileName);
+    if (!file) {
+      throw new Error('File not found');
+    }
+    await file.delete();
+  } catch (error) {
+    console.error('Error deleting file from Google Cloud Storage:', error);
+    throw error;
+  }
 };
