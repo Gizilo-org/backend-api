@@ -105,7 +105,7 @@ exports.getProductByName = async (req, res) => {
     }
 
     // Fetch additional data from the nutrient API
-    const nutrientApiUrl = 'process.env.NUTRIENT_API_URL';
+    const nutrientApiUrl = process.env.NUTRIENT_API_URL;
     const nutrientRequestBody = {
       fat: product.fat,
       sugar: product.sugar,
